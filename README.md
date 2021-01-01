@@ -78,3 +78,24 @@ module.exports = new GraphQLSchema({
 ```
 
 ---
+
+Если мы делаем схемы с ссылками друг на друга, то должны обеспечить т.н. ленивую подгузку полей. Для этого поле fields при объвлении пользовательского типа должно содержать функцию
+
+```js
+const MovieType = new GraphQLObjectType({
+  name: 'Movie',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLString },
+    genre: { type: GraphQLString },
+    director: {
+      type: DirectorType,
+      resolve(parent, args) {
+        return directors.find((d) => d.id === parent.id)
+      },
+    },
+  }),
+})
+```
+
+---
