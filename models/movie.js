@@ -1,10 +1,10 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const MovieSchema = new Schema({
+const movieSchema = new Schema({
   name: String,
   genre: String,
   directorId: String,
-})
+}, { collection: 'movies' })
 
-module.exports = mongoose.model('Movies', MovieSchema)
+module.exports = mongoose.model('Movie', movieSchema)

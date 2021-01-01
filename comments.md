@@ -189,14 +189,24 @@ app.listen(PORT, (err) => {
 
 ---
 
-Подключаем схемы в файл /schema/schema.js
+- Создаём модели /models/director.js и /models/movie.js
+
+```js
+mongoose.model('Movie', movieSchema)
+
+mongoose.model('Director', directorSchema)
+```
+
+Первый параметр в методе mongoose.model указывает на название модели. Mongoose затем будет автоматически искать в базе данных коллекцию, название которой соответствует названию модели [во множественном числе](https://metanit.com/web/nodejs/6.6.php). Например, в данном случае название модели "Director". Во множественном числе в соответствии с правилами английского языка это "directors". Поэтому при работе с данными модели Director (добавлении, удалении, редактировании и получении объектов) mongoose будет обращаться к коллекции "directors". Если такая коллекция есть в БД, то с ней будет идти взаимодействие. Если такой коллекции в базе данных нет, то она будет создана автоматически
+
+- Подключаем схемы в файл /schema/schema.js
 
 ```js
 const Movies = require('../models/movies')
 const Directors = require('../models/director')
 ```
 
-Остается подправить резолверы с учётом синтаксиса MongoDB:
+- Теперь нужно подправить резолверы с учётом синтаксиса MongoDB:
 
 ```js
    resolve(parent, args) {

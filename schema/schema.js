@@ -8,7 +8,7 @@ const {
   GraphQLList,
   GraphQLSchema } = graphql
 
-const Movies = require('../models/movies')
+const Movies = require('../models/movie')
 const Directors = require('../models/director')
 
 // Custom data types
@@ -38,7 +38,7 @@ const DirectorType = new GraphQLObjectType({
       type: new GraphQLList(MovieType),
       resolve(parent, args) {
         // return movies.filter(m => m.directorId = parent.id)
-        return Movies.find({ directorId: parent.id });
+        return Movies.find({ directorId: parent.id })
       }
     }
   }),
@@ -69,7 +69,7 @@ const Query = new GraphQLObjectType({
       type: new GraphQLList(MovieType),
       resolve(parent, args) {
         // return movies
-        return Movies.find({});
+        return Movies.find({})
       }
     },
     directors: {

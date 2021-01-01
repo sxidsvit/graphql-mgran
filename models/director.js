@@ -1,9 +1,10 @@
 const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
-const DirectorSchema = new Schema({
+const directorSchema = new Schema({
   name: String,
   age: Number
-})
+},
+  { collection: 'directors' })
 
-module.exports = mongoose.model('Directors', DirectorSchema)
+module.exports = mongoose.model('Director', directorSchema)
