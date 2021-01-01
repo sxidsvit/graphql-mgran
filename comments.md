@@ -164,10 +164,9 @@ const mongoose = require('mongoose')
 const app = express()
 const PORT = 3021
 mongoose.connect(
-  'mongodb+srv://sxidsvit:1234qwer@cluster0.b7vva.azure.mongodb.net/test?authSource=admin&replicaSet=atlas-umab7t-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true',
+  'mongodb+srv://sxidsvit:1234qwer@cluster0.b7vva.azure.mongodb.net/graphql-tutorial?authSource=admin&replicaSet=atlas-umab7t-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true',
   { useNewUrlParser: true, useUnifiedTopology: true }
 )
-
 app.use(
   '/graphql',
   graphqlHTTP({
@@ -239,4 +238,51 @@ const Directors = require('../models/director')
      return Movies.find({});
    }
 
+```
+
+---
+
+### Мутации
+
+```js
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    addDirector: {
+      type: DirectorType,
+      args: {
+        name: { type: GraphQLString },
+        age: { type: GraphQLInt },
+      },
+      resolve(parent, args) {
+        const director = new Directors({
+          name: args.name,
+          age: args.age,
+        })
+        return director.save()
+      },
+    },
+    addMovie: {
+      type: MovieType,
+      args: {
+        name: { type: GraphQLString },
+        genre: { type: GraphQLString },
+        directorId: { type: GraphQLID },
+      },
+      resolve(parent, args) {
+        const movie = new Movies({
+          name: args.name,
+          genre: args.genre,
+          directorId: args.directorId,
+        })
+        return movie.save()
+      },
+    },
+  },
+})
+
+module.exports = new GraphQLSchema({
+  query: Query,
+  mutation: Mutation,
+})
 ```
