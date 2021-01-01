@@ -5,7 +5,7 @@ const mongoose = require('mongoose')
 
 const app = express()
 const PORT = 3021
-mongoose.connect('mongodb+srv://sxidsvit:1234qwer@cluster0.b7vva.azure.mongodb.net/graphql-tutorial?authSource=admin&replicaSet=atlas-umab7t-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true', { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect('mongodb+srv://sxidsvit:1234qwer@cluster0.b7vva.azure.mongodb.net/graphql-tutorial?authSource=admin&replicaSet=atlas-umab7t-shard-0&readPreference=primary&appname=MongoDB%20Compass&ssl=true', { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false })
 
 app.use('/graphql', graphqlHTTP({
   schema,
