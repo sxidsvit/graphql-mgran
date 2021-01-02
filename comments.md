@@ -554,7 +554,7 @@ const Mutation = new GraphQLObjectType({
 Вот как это выглидит для компонетна DirectorsTable
 
 ```js
-// DirectorsTable/queries.js
+// src/components/DirectorsTable/queries.js
 import { gql } from 'apollo-boost'
 
 export const directorsQuery = gql`
@@ -572,7 +572,7 @@ query directorsQuery {
 ```
 
 ```js
-//  DirectorsTable/DirectorsTableHoc.js
+//  src/components/DirectorsTable/DirectorsTableHoc.js
 import { withStyles } from '@material-ui/core/styles'
 import { compose } from 'recompose'
 import { graphql } from 'react-apollo'
@@ -585,7 +585,7 @@ export default compose(withStyles(styles), graphql(directorsQuery))
 ```
 
 ```js
-//  DirectorsTable/DirectorsTable.jsx
+//  src/components/DirectorsTable/DirectorsTable.jsx
 import withHocs from './DirectorsTableHoc';
 
 class DirectorsTable extends React.Component {
@@ -598,3 +598,61 @@ class DirectorsTable extends React.Component {
  }
 export default withHocs(DirectorsTable)
 ```
+
+---
+
+### HOC: добавление нового режисера
+
+Настраиваем компонент DirectorsForm, ответственный за отображение формы в которую вводим имя и возраст режисёра. Далее, вызывается мутация и данные обновляются на сервере и на клиенте
+
+```js
+// src/components/DirectorsForm/mutations.js
+import { gql } from 'apollo-boost'
+
+export const addDirectorMutation = gql`
+  mutation addDirector($name: String!, $age: Int!) {
+    addDirector(name: $name, age: $age) {
+      name
+    }
+  }
+`
+
+// src/components/DirectorsForm/DirectorsFormHoc.js
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+import { addDirectorMutation } from './mutations'
+import { directorsQuery } from '../DirectorsTable/queries'
+import { styles } from './styles'
+
+const withGraphqlAdd = graphql(addDirectorMutation, {
+  props: ({ mutate }) => ({
+    addDirector: (director) =>
+      mutate({
+        variables: director,
+        refetchQueries: [{ query: directorsQuery }],
+      }),
+  }),
+})
+
+export default compose(withStyles(styles), withGraphqlAdd)
+
+// src/components/DirectorsForm/DirectorsForm.js
+...
+import withHocs from './DirectorsFormHoc';
+
+class DirectorsForm extends React.Component {
+...
+  handleSave = () => {
+    const { selectedValue, onClose, addDirector } = this.props;
+    const { id, name, age } = selectedValue;
+    addDirector({ name, age: Number(age) })
+    onClose();
+  };
+...
+}
+
+export default withHocs(DirectorsForm);
+```
+
+_Нам не только нужно вызвать mutation, но также после её завершения отправить query на обновление данных во вкладке с режисерами. Всё это сделает функция graphql() в src/components/DirectorsForm/DirectorsFormHoc.js_
