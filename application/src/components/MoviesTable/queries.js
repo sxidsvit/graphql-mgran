@@ -6,6 +6,11 @@ query movieQuery {
     id 
     name
     genre
+    rate
+    watched
+    director{
+      name
+    }
   }
 }
 `

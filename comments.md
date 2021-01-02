@@ -544,3 +544,57 @@ const Mutation = new GraphQLObjectType({
 }),
 
 ```
+
+---
+
+### HOC: подключение стилей и серверных данных через props
+
+Настраиваем компоненты, ответственными за отображение вкладок с фильмами и режисёрами (/components/DirectorsTable & /components/MoviessTable), для получения данных с сервера.
+
+Вот как это выглидит для компонетна DirectorsTable
+
+```js
+// DirectorsTable/queries.js
+import { gql } from 'apollo-boost'
+
+export const directorsQuery = gql`
+query directorsQuery {
+  directors{
+    id
+    name
+    age
+    movies{
+      name
+      id
+    }
+  }
+}
+```
+
+```js
+//  DirectorsTable/DirectorsTableHoc.js
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+import { directorsQuery } from './queries'
+
+import { styles } from './styles'
+
+// wrapers over styles & queries' results
+export default compose(withStyles(styles), graphql(directorsQuery))
+```
+
+```js
+//  DirectorsTable/DirectorsTable.jsx
+import withHocs from './DirectorsTableHoc';
+
+class DirectorsTable extends React.Component {
+  ...
+  render() {
+    const { anchorEl, openDialog, data: activeElem = {} } = this.state;
+    const { classes, data = {} } = this.props
+    const { directors = [] } = data
+  ...
+ }
+export default withHocs(DirectorsTable)
+```

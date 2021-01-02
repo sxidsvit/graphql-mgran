@@ -75,7 +75,7 @@ const Query = new GraphQLObjectType({
     },
     directors: {
       type: new GraphQLList(DirectorType),
-      resolve(parent, args) {
+      resolve(__) {
         // return directors
         return Directors.find({});
       }

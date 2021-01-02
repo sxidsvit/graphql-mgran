@@ -17,11 +17,6 @@ import MoviesDialog from '../MoviesDialog/MoviesDialog';
 
 import withHocs from './MoviesTableHoc';
 
-const movies = [
-  { id: 1, name: 'Pulp Fiction', genre: 'Crime', rate: 10, director: { name: 'Quentin Tarantino' }, watched: true },
-  { id: 2, name: 'Lock, Stock and Two Smoking Barrels', genre: 'Crime-comedy', rate: 9, director: { name: 'Guy Ritchie' }, watched: false },
-];
-
 class MoviesTable extends React.Component {
   state = {
     anchorEl: null,
@@ -52,10 +47,8 @@ class MoviesTable extends React.Component {
 
   render() {
     const { anchorEl, openDialog, data: activeElem = {} } = this.state;
-
-    const { classes } = this.props;
-
-    console.log('this.props.data: ', this.props.data)
+    const { classes, data = {} } = this.props;
+    const { movies = [] } = data;
 
     return (
       <>
@@ -104,5 +97,4 @@ class MoviesTable extends React.Component {
     );
   }
 };
-
 export default withHocs(MoviesTable);
