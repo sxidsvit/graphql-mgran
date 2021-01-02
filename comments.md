@@ -1,4 +1,6 @@
-## Установка зависимостей
+## Серверная часть
+
+### Установка зависимостей
 
 - Для сервера: npm i express nodemon graphql express-graphql mongoose cors --save
 - Для приложения (UI): yarn add apollo-boost react-apollo graphql @material-ui/core @material-ui/icons react-swipeable-views recompose
@@ -14,6 +16,8 @@ const graphqlHTTP = require('express-graphql')
 Теперь express-сервер можем использовать GraphQL API для обработки запросов, которые приходят на адресс /graphql. Реализуется это как middleware
 
 ---
+
+### GraphQL cхема и Query-запросы
 
 Есть отличие в описании типов данных и запросов с файле schema.js и книге ["GraphQL: язык запросов для современных веб-приложений"](https://www.htbook.ru/kompjutery_i_seti/programmirovanie/graphql-yazyk-zaprosov-dlya-sovremennyh-veb-prilozhenij)
 
@@ -242,7 +246,7 @@ const Directors = require('../models/director')
 
 ---
 
-### Мутации
+### Схема со всеми мутациями
 
 ```js
 const Mutation = new GraphQLObjectType({
@@ -336,4 +340,207 @@ module.exports = new GraphQLSchema({
   query: Query,
   mutation: Mutation,
 })
+```
+
+---
+
+## Клиентская часть приложения (React и Apollo)
+
+```js
+npm install apollo-boost react-apollo graphql @material-ui/core @material-ui/icons react-swipeable-views recompose
+```
+
+Recompose is a React utility belt for function components and higher-order component. Он позволяет обернуть один компонент в НЕСКОЛЬКО HOC-компонентов.
+
+---
+
+Все созданные компогненты находятся в папке /application/src/components
+
+Во многих папках с компонентами есть hoc-файл с содержимым
+
+```js
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+
+import { styles } from './styles'
+
+export default compose(withStyles(styles))
+```
+
+Это решение от Material UI позволяет преобразовывать файл со стилями для данного компонента в объект и поместить его во внуть главного компонента как props. Теперь использование стилей становиться более удобным.
+
+Например, файл /Tabs/TabsHoc.js
+
+```js
+...
+import withHocs from './Tabs.jsx'
+...
+export default withHocs(SimpleTabs)
+
+```
+
+---
+
+Настроим наше package.json Так, чтобы сервер и приложение можно было запускать одной командой
+
+app.js подкючаем middleware cors чтобы сделать возможным обработку CORS-запросов
+
+```js
+const cors = require('cors')
+...
+// сначала подключаем cors !!!
+app.use(cors())
+app.use('/graphql', graphqlHTTP({
+  schema,
+  graphiql: true
+}))
+```
+
+Подключаем клиент /application/src/App.js
+
+```js
+...
+import ApolloClient, { InMemoryCache } from 'apollo-boost'
+import { ApolloProvider } from 'react-apollo'
+
+const cache = new InMemoryCache()
+
+const client = new ApolloClient({
+  cache,
+  uri: 'http://localhost:3021/graphql',
+})
+
+class App extends Component {
+  render() {
+    return (
+      <ApolloProvider client={client}>
+        <MuiThemeProvider theme={theme}>
+          <Tabs />
+        </MuiThemeProvider>
+      </ApolloProvider>
+    )
+  }
+}
+```
+
+Подготывливаем тестовый запрос /src/MovieTable
+
+```js
+// queries.js
+import { gql } from 'apollo-boost'
+
+export const moviesQuery = gql`
+  query movieQuery {
+    movies {
+      id
+      name
+      genre
+    }
+  }
+`
+
+// MoviesTableHoc.js - создаем оберку,
+// чтобы передать в props стили и результат graphql-запроса
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+import { moviesQuery } from './queries'
+import { styles } from './styles'
+
+export default compose(withStyles(styles), graphql(moviesQuery))
+
+// MoviesTable.jsx - тестируем получение данных с сервера
+import withHocs from './MoviesTableHoc';
+...
+  render() {
+...
+    console.log(this.props.data)
+...
+export default withHocs(MoviesTable)
+```
+
+---
+
+Добавление нового поля в существующий тип
+
+```js
+// models/movie.js
+const mongoose = require('mongoose')
+const Schema = mongoose.Schema
+const movieSchema = new Schema(
+  {
+    name: String,
+    genre: String,
+    rate: Number,
+    watched: Boolean,
+  },
+  { collection: 'movies' }
+)
+module.exports = mongoose.model('Movie', movieSchema)
+
+// schema/schema.js
+const MovieType = new GraphQLObjectType({
+  name: 'Movie',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLNonNull(GraphQLString) },
+    genre: { type: GraphQLNonNull(GraphQLString) },
+    watched: { type: GraphQLNonNull(GraphQLBoolean) },
+    rate: { type: GraphQLInt },
+    director: {
+      type: DirectorType,
+      resolve(parent, args) {
+        // return directors.find(d => d.id === parent.id);
+        return Directors.findById(parent.directorId)
+      },
+    },
+  }),
+})
+...
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    addMovie: {
+      type: MovieType,
+      args: {
+        name: { type: GraphQLNonNull(GraphQLString) },
+        genre: { type: GraphQLNonNull(GraphQLString) },
+        directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
+      },
+      resolve(parent, { name, genre, directorId, watched, rate }) {
+        const movie = new Movies({
+          name,
+          genre,
+          directorId,
+          watched,
+          rate
+        });
+        return movie.save();
+      }
+    },
+    updateMovie: {
+      type: MovieType,
+      args: {
+        id: { type: GraphQLID },
+        name: { type: GraphQLNonNull(GraphQLString) },
+        genre: { type: GraphQLNonNull(GraphQLString) },
+        directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
+      },
+      resolve(parent, { id, name, genre, directorId, watched, rate }) {
+        return Movies.findByIdAndUpdate(
+          args.id,
+          {
+            $set: { name, genre, directorId, watched, rate }
+          },
+          { new: true }
+        )
+      }
+    }
+  },
+}),
+
 ```

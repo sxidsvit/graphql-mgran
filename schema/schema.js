@@ -7,7 +7,9 @@ const {
   GraphQLInt,
   GraphQLList,
   GraphQLSchema,
-  GraphQLNonNull } = graphql
+  GraphQLNonNull,
+  GraphQLBoolean
+} = graphql
 
 const Movies = require('../models/movie')
 const Directors = require('../models/director')
@@ -19,6 +21,8 @@ const MovieType = new GraphQLObjectType({
     id: { type: GraphQLID },
     name: { type: GraphQLNonNull(GraphQLString) },
     genre: { type: GraphQLNonNull(GraphQLString) },
+    watched: { type: GraphQLNonNull(GraphQLBoolean) },
+    rate: { type: GraphQLInt },
     director: {
       type: DirectorType,
       resolve(parent, args) {
@@ -106,12 +110,16 @@ const Mutation = new GraphQLObjectType({
         name: { type: GraphQLNonNull(GraphQLString) },
         genre: { type: GraphQLNonNull(GraphQLString) },
         directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
       },
-      resolve(parent, args) {
+      resolve(parent, { name, genre, directorId, watched, rate }) {
         const movie = new Movies({
-          name: args.name,
-          genre: args.genre,
-          directorId: args.directorId,
+          name,
+          genre,
+          directorId,
+          watched,
+          rate
         });
         return movie.save();
       }
@@ -151,17 +159,15 @@ const Mutation = new GraphQLObjectType({
         id: { type: GraphQLID },
         name: { type: GraphQLNonNull(GraphQLString) },
         genre: { type: GraphQLNonNull(GraphQLString) },
-        directorId: { type: GraphQLID }
+        directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
       },
-      resolve(parent, args) {
+      resolve(parent, { id, name, genre, directorId, watched, rate }) {
         return Movies.findByIdAndUpdate(
           args.id,
           {
-            $set: {
-              name: args.name,
-              genre: args.genre,
-              directorId: args.directorId
-            }
+            $set: { name, genre, directorId, watched, rate }
           },
           { new: true }
         )
