@@ -991,3 +991,115 @@ export default withHocs(MoviesSearch)
 ```
 
 Всё тоже самое проделываем для поиска режисеров application/src/components/DirectorsSearch
+
+---
+
+Фиксим баги, возникшие из-за изменения запросов на поиск фильмов и режисёров.
+
+Начинаем с фильмов, а потом всё тоже сделаем для режисёров
+
+```js
+// application/src/components/MoviesForm/queries.js
+// добавляем в запрос параметр name
+import { gql } from 'apollo-boost'
+
+export const directorsQuery = gql`
+  query directorsQuery($name: String) {
+    directors(name: $name) {
+      id
+      name
+    }
+  }
+`
+```
+
+```js
+// application/src/components/MoviesForm/MoviesFormHoc.js
+
+// Так как ранее добавили параметр в query нужно добавить запрос и в refetchQueries
+
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+
+import { addMovieMutation, updateMovieMutation } from './mutations'
+import { moviesQuery } from '../MoviesTable/queries'
+import { directorsQuery } from './queries'
+
+import { styles } from './styles'
+
+const withGraphQL = compose(
+  graphql(addMovieMutation, {
+    props: ({ mutate }) => ({
+      addMovie: (movie) =>
+        mutate({
+          variables: movie,
+          refetchQueries: [
+            {
+              query: moviesQuery,
+              variables: { name: '' },
+            },
+          ],
+        }),
+    }),
+  }),
+  graphql(updateMovieMutation, {
+    props: ({ mutate }) => ({
+      updateMovie: (movie) =>
+        mutate({
+          variables: movie,
+          refetchQueries: [
+            {
+              query: moviesQuery,
+              variables: { name: '' },
+            },
+          ],
+        }),
+    }),
+  }),
+  graphql(directorsQuery, {
+    options: ({ name = '' }) => ({
+      variables: { name },
+    }),
+  })
+)
+
+export default compose(withStyles(styles), withGraphQL)
+
+//  application/src/components/MoviesDialog/MoviesDialogHOC.js
+// Так как ранее добавили параметр в query нужно добавить запрос и в refetchQueries
+
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+
+import { deleteMovieMutation } from './mutaations'
+import { moviesQuery } from '../MoviesTable/queries'
+
+const withGraphqlDelete = graphql(deleteMovieMutation, {
+  props: ({ mutate }) => ({
+    deleteMovie: (id) =>
+      mutate({
+        variables: id,
+        refetchQueries: [
+          {
+            query: moviesQuery,
+            variables: { name: '' },
+          },
+        ],
+      }),
+  }),
+})
+
+export default compose(withGraphqlDelete)
+```
+
+Теперь в форме создания нового фильма появился выпадающий список режисеров
+
+---
+
+Аналогично правим refetchQueries для режисёров:
+
+- application/src/components/DirectorsForm/DirectorsFormHoc.js
+- application/src/components/DirectorsDialog/DirectorsDialogHOC.js
+
+---
