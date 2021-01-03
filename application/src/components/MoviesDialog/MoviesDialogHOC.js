@@ -1,7 +1,7 @@
 import { compose } from 'recompose';
 import { graphql } from 'react-apollo';
 
-import { deleteMovieMutation } from './mutations';
+import { deleteMovieMutation } from './mutaations';
 import { moviesQuery } from '../MoviesTable/queries';
 
 const withGraphqlDelete = graphql(deleteMovieMutation, {

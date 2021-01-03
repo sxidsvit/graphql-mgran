@@ -774,3 +774,220 @@ export default withHocs(MoviesForm)
 Теперь у нашего приложения есть возможность не только просматривать списки фильмов и режисёров, но и добавлять в них новые записи (документы)
 
 ---
+
+### Удаление и обновление документов (записей)
+
+src/components/MoviesForm
+
+```js
+//MoviesForm/mutations.js - две мутации на удаление и обновление
+import { gql } from 'apollo-boost'
+
+export const addMovieMutation = gql`
+  mutation addMovie(
+    $name: String!
+    $genre: String!
+    $watched: Boolean!
+    $rate: Int
+    $directorId: ID
+  ) {
+    addMovie(
+      name: $name
+      genre: $genre
+      watched: $watched
+      rate: $rate
+      directorId: $directorId
+    ) {
+      name
+    }
+  }
+`
+export const updateMovieMutation = gql`
+  mutation updateMovie(
+    $id: ID
+    $name: String!
+    $genre: String!
+    $watched: Boolean!
+    $rate: Int
+    $directorId: ID
+  ) {
+    updateMovie(
+      id: $id
+      name: $name
+      genre: $genre
+      watched: $watched
+      rate: $rate
+      directorId: $directorId
+    ) {
+      name
+    }
+  }
+`
+
+//MoviesForm/MoviesFormHoc.js - обертки для передачи props
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+import { addMovieMutation, updateMovieMutation } from './mutations'
+import { moviesQuery } from '../MoviesTable/queries'
+import { directorsQuery } from './queries'
+import { styles } from './styles'
+
+const withGraphQL = compose(
+  graphql(addMovieMutation, {
+    props: ({ mutate }) => ({
+      addMovie: (movie) =>
+        mutate({
+          variables: movie,
+          refetchQueries: [{ query: moviesQuery }],
+        }),
+    }),
+  }),
+  graphql(updateMovieMutation, {
+    props: ({ mutate }) => ({
+      updateMovie: (movie) =>
+        mutate({
+          variables: movie,
+          refetchQueries: [{ query: moviesQuery }],
+        }),
+    }),
+  })
+)
+
+export default compose(withStyles(styles), withGraphQL, graphql(directorsQuery))
+
+//MoviesForm/MoviesForm.js - обертки для передачи props
+...
+import withHocs from './MoviesFormHoc';
+class MoviesForm extends React.Component {
+  handleClose = () => {
+    this.props.onClose();
+  };
+
+  handleSave = () => {
+    const { selectedValue, onClose, addMovie, updateMovie } = this.props;
+    const { id, name, genre, rate, directorId, watched } = selectedValue
+    id ?
+      updateMovie({ id, name, genre, rate: Number(rate), directorId, watched: Boolean(watched) }) :
+      addMovie({ name, genre, rate: Number(rate), directorId, watched: Boolean(watched) });
+    onClose()
+  }
+...
+export default withHocs(MoviesForm)
+```
+
+Концептуально все тоже самое нужно повторить для src/components/DirectorsForm
+
+---
+
+### Поиск по фильмам и режисёрам
+
+Корректируем GraphQL-запросы как на стороне сервера, так и стороне клиента
+
+```js
+//  /schema/schema.js
+movies: {
+  type: new GraphQLList(MovieType),
+  args: { name: { type: GraphQLString } },
+  resolve(parent, { name }) {
+    // return movies
+    return Movies.find({ name: { $regex: name, $options: "i" } })
+  }
+}
+```
+
+```js
+// application/src/components/MoviesTable/queries.js
+...
+export const moviesQuery = gql`
+query movieQuery($name: String) {
+  movies(name: $name) {
+    id
+...
+```
+
+Поскольку запрос изменен и в него передаются данные, нужно внести изменения в обёрку:
+
+```js
+// application/src/components/MoviesTable/MoviesTableHoc.js
+...
+const withGraphQL = graphql(moviesQuery, {
+  options: ({ name = '' }) => ({
+    variables: { name }
+  })
+})
+
+export default compose(withStyles(styles), withGraphQL)
+
+```
+
+a также в файл с таблицей MoviesTable.jsx
+
+```js
+//  application/src/components/MoviesTable/MoviesTable.jsx
+...
+import MoviesSearch from '../MoviesSearch/MoviesSearch';
+...
+handleChange = (name) => (event) => {
+  this.setState({ [name]: event.target.value })
+}
+
+handleSearch = (e) => {
+  const { data } = this.props
+  const { name } = this.state
+
+  if (e.charCode === 13) {
+    data.fetchMore({
+      variables: { name },
+      updateQuery: (previousResult, { fetchMoreResult }) => fetchMoreResult,
+    })
+  }
+}
+...
+   return (
+      <>
+        <Paper>
+          <MoviesSearch name={name} handleChange={this.handleChange} handleSearch={this.handleSearch} />
+        </Paper>
+        <MoviesDialog open={openDialog} handleClose={this.handleDialogClose} id={activeElem.id} />
+...
+```
+
+и в файл MoviesSearch.jsx компонента поиска
+
+```js
+// application/src/components/MoviesSearch/MoviesSearch.jsx
+import React from 'react'
+import InputBase from '@material-ui/core/InputBase'
+import SearchIcon from '@material-ui/icons/Search'
+
+import withHocs from './MoviesSearchHoc'
+
+class MoviesSearch extends React.Component {
+  render() {
+    const { classes, name, handleChange, handleSearch } = this.props
+
+    return (
+      <div className={classes.search}>
+        <div className={classes.searchIcon}>
+          <SearchIcon />
+        </div>
+        <InputBase
+          onChange={handleChange('name')}
+          onKeyPress={(e) => handleSearch(e)}
+          value={name}
+          placeholder="Search…"
+          classes={{
+            root: classes.inputRoot,
+            input: classes.inputInput,
+          }}
+        />
+      </div>
+    )
+  }
+}
+
+export default withHocs(MoviesSearch)
+```
+
+Всё тоже самое проделываем для поиска режисеров application/src/components/DirectorsSearch
