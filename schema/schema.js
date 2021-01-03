@@ -70,7 +70,7 @@ const Query = new GraphQLObjectType({
       type: new GraphQLList(MovieType),
       args: { name: { type: GraphQLString } },
       resolve(parent, { name }) {
-        return Movies.find({ name: { $regex: name, $options: "i" } })
+        return Movies.find({ name: { $regex: name, $options: "i" } });
       }
     },
     directors: {

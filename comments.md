@@ -3,7 +3,7 @@
 ### Установка зависимостей
 
 - Для сервера: npm i express nodemon graphql express-graphql mongoose cors --save
-- Для приложения (UI): yarn add apollo-boost react-apollo graphql @material-ui/core @material-ui/icons react-swipeable-views recompose
+- Для приложения (UI): npm i apollo-boost react-apollo graphql @material-ui/core @material-ui/icons react-swipeable-views recompose
 
 Mongoose provides a straight-forward, schema-based solution to model your application data. It includes built-in type casting, validation, query building, business logic hooks and more, out of the books
 
@@ -49,7 +49,7 @@ on ${url}`)
 )
 ```
 
-В нашем случае файле /schema/schema.js используем библиотеку the JavaScript reference implementation for GraphQL, поэтому файл выглидят так
+В нашем случае файле /schema/schema.js используем библиотеку the JavaScript reference implementation for GraphQL, поэтому файл выглядят так
 
 ```js
 const graphql = require('graphql')
@@ -1101,5 +1101,200 @@ export default compose(withGraphqlDelete)
 
 - application/src/components/DirectorsForm/DirectorsFormHoc.js
 - application/src/components/DirectorsDialog/DirectorsDialogHOC.js
+
+---
+
+### Окончательная схема запросов GraphQL (schema/schema.js)
+
+```js
+//  schema/schema.js
+
+const graphql = require('graphql')
+
+const {
+  GraphQLObjectType,
+  GraphQLString,
+  GraphQLID,
+  GraphQLInt,
+  GraphQLList,
+  GraphQLSchema,
+  GraphQLNonNull,
+  GraphQLBoolean,
+} = graphql
+
+const Movies = require('../models/movie')
+const Directors = require('../models/director')
+
+// Custom data types
+const MovieType = new GraphQLObjectType({
+  name: 'Movie',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLNonNull(GraphQLString) },
+    genre: { type: GraphQLNonNull(GraphQLString) },
+    watched: { type: GraphQLNonNull(GraphQLBoolean) },
+    rate: { type: GraphQLInt },
+    director: {
+      type: DirectorType,
+      resolve({ directorId }, args) {
+        return Directors.findById(directorId)
+      },
+    },
+  }),
+})
+
+const DirectorType = new GraphQLObjectType({
+  name: 'Director',
+  fields: () => ({
+    id: { type: GraphQLID },
+    name: { type: GraphQLNonNull(GraphQLString) },
+    age: { type: GraphQLNonNull(GraphQLInt) },
+    movies: {
+      type: new GraphQLList(MovieType),
+      resolve({ id }, args) {
+        return Movies.find({ directorId: id })
+      },
+    },
+  }),
+})
+
+//  Custom queries
+
+const Query = new GraphQLObjectType({
+  name: 'Query',
+  fields: {
+    movie: {
+      type: MovieType,
+      args: { id: { type: GraphQLID } },
+      resolve(parent, { id }) {
+        return Movies.findById(id)
+      },
+    },
+    director: {
+      type: DirectorType,
+      args: { id: { type: GraphQLID } },
+      resolve(parent, { id }) {
+        return Directors.findById(id)
+      },
+    },
+    movies: {
+      type: new GraphQLList(MovieType),
+      args: { name: { type: GraphQLString } },
+      resolve(parent, { name }) {
+        return Movies.find({ name: { $regex: name, $options: 'i' } })
+      },
+    },
+    directors: {
+      type: new GraphQLList(DirectorType),
+      args: { name: { type: GraphQLString } },
+      resolve(parent, { name }) {
+        return Directors.find({ name: { $regex: name, $options: 'i' } })
+      },
+    },
+  },
+})
+
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    addDirector: {
+      type: DirectorType,
+      args: {
+        name: { type: GraphQLNonNull(GraphQLString) },
+        age: { type: GraphQLNonNull(GraphQLInt) },
+      },
+      resolve(parent, { name, age }) {
+        const director = new Directors({
+          name,
+          age,
+        })
+        return director.save()
+      },
+    },
+    addMovie: {
+      type: MovieType,
+      args: {
+        name: { type: GraphQLNonNull(GraphQLString) },
+        genre: { type: GraphQLNonNull(GraphQLString) },
+        directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
+      },
+      resolve(parent, { name, genre, directorId, watched, rate }) {
+        const movie = new Movies({
+          name,
+          genre,
+          directorId,
+          watched,
+          rate,
+        })
+        return movie.save()
+      },
+    },
+    deleteDirector: {
+      type: DirectorType,
+      args: { id: { type: GraphQLID } },
+      resolve(parent, { id }) {
+        return Directors.findByIdAndRemove(id)
+      },
+    },
+    deleteMovie: {
+      type: MovieType,
+      args: { id: { type: GraphQLID } },
+      resolve(parent, { id }) {
+        return Movies.findByIdAndRemove(id)
+      },
+    },
+    updateDirector: {
+      type: DirectorType,
+      args: {
+        id: { type: GraphQLID },
+        name: { type: new GraphQLNonNull(GraphQLString) },
+        age: { type: new GraphQLNonNull(GraphQLInt) },
+      },
+      resolve(parent, { id, name, age }) {
+        return Directors.findByIdAndUpdate(
+          id,
+          { $set: { name, age } },
+          { new: true }
+        )
+      },
+    },
+    updateMovie: {
+      type: MovieType,
+      args: {
+        id: { type: GraphQLID },
+        name: { type: GraphQLNonNull(GraphQLString) },
+        genre: { type: GraphQLNonNull(GraphQLString) },
+        directorId: { type: GraphQLID },
+        watched: { type: new GraphQLNonNull(GraphQLBoolean) },
+        rate: { type: GraphQLInt },
+      },
+      resolve(parent, { id, name, genre, directorId, watched, rate }) {
+        return Movies.findByIdAndUpdate(
+          id,
+          {
+            $set: { name, genre, directorId, watched, rate },
+          },
+          { new: true }
+        )
+      },
+    },
+  },
+})
+
+module.exports = new GraphQLSchema({
+  query: Query,
+  mutation: Mutation,
+})
+```
+
+---
+
+Запуск сервера и приложения одной коммандой
+
+```js
+ "start": "concurrently \"npm run dev\" \"npm run start --prefix application\""
+```
 
 ---
