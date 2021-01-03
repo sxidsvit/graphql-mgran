@@ -656,3 +656,120 @@ export default withHocs(DirectorsForm);
 ```
 
 _Нам не только нужно вызвать mutation, но также после её завершения отправить query на обновление данных во вкладке с режисерами. Всё это сделает функция graphql() в src/components/DirectorsForm/DirectorsFormHoc.js_
+
+Всё тоже самое нужно проделать и с компонентом src/components/MoviesForm, которой добавляет новые фильмы в нашу БД
+
+```js
+// src/components/MoviesForm/mutations.js
+import { gql } from 'apollo-boost'
+
+export const addMovieMutation = gql`
+  mutation addMovie(
+    $name: String!
+    $genre: String!
+    $watched: Boolean!
+    $rate: Int
+    $directorId: ID
+  ) {
+    addMovie(
+      name: $name
+      genre: $genre
+      watched: $watched
+      rate: $rate
+      directorId: $directorId
+    ) {
+      name
+    }
+  }
+`
+```
+
+```js
+// src/components/MoviesForm/queries.js
+// Этот query нужен для вывода списка режисёров в форму
+import { gql } from 'apollo-boost'
+
+export const moviesQuery = gql`
+  query movieQuery {
+    movies {
+      id
+      name
+      genre
+      rate
+      watched
+      director {
+        name
+      }
+    }
+  }
+`
+```
+
+```js
+// src/components/MoviesForm/MoviesFormHoc.js
+import { withStyles } from '@material-ui/core/styles'
+import { compose } from 'recompose'
+import { graphql } from 'react-apollo'
+
+import { addMovieMutation } from './mutations'
+import { moviesQuery } from '../MoviesTable/queries'
+import { directorsQuery } from './queries'
+
+import { styles } from './styles'
+
+const withGraphqlAdd = graphql(addMovieMutation, {
+  props: ({ mutate }) => ({
+    addMovie: (movie) =>
+      mutate({
+        variables: movie,
+        refetchQueries: [{ query: moviesQuery }],
+      }),
+  }),
+})
+
+export default compose(
+  withStyles(styles),
+  withGraphqlAdd,
+  graphql(directorsQuery)
+)
+```
+
+```js
+// src/components/MoviesForm/MoviesForm.js
+...
+import withHocs from './MoviesFormHoc';
+
+class MoviesForm extends React.Component {
+  handleClose = () => { this.props.onClose()};
+
+  handleSave = () => {
+    const { selectedValue, onClose, addMovie } = this.props;
+    const { id, name, genre, rate, directorId, watched } = selectedValue;
+    addMovie({ id, name, genre, rate: Number(rate), directorId, watched: Boolean(watched) });
+    onClose()
+  };
+
+  render() {
+    const { classes, open, handleChange, handleSelectChange, handleCheckboxChange, selectedValue = {}, data = {} } = this.props;
+    const { name, genre, rate, directorId, watched } = selectedValue;
+    const { directors = [] } = data // для списка режисёров
+
+...
+     <Select
+        value={directorId}
+        onChange={handleSelectChange}
+        input={<OutlinedInput name="directorId" id="outlined-director" labelWidth={57} />}
+      >
+        {directors.map(director => <MenuItem key={director.id} value={directid}>{director.name}</MenuItem>)}
+      </Select>
+...
+}
+export default withHocs(MoviesForm)
+
+```
+
+---
+
+Теперь у нашего приложения есть возможность не только просматривать списки фильмов и режисёров, но и добавлять в них новые записи (документы)
+
+---
