@@ -699,6 +699,7 @@ export const moviesQuery = gql`
       watched
       director {
         name
+        id
       }
     }
   }

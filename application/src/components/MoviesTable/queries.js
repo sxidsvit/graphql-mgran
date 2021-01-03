@@ -10,6 +10,7 @@ query movieQuery {
     watched
     director{
       name
+      id
     }
   }
 }
